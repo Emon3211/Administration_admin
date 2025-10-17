@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* Custom Styles */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #eef2f7; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+        }
+        .login-container { 
+            background-color: #ffffff; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); 
+            max-width: 400px; 
+            width: 90%; 
+        }
+        input { 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            padding: 12px; 
+            width: 100%; 
+            margin-bottom: 15px; 
+        }
+        .login-btn { 
+            background-color: #1e40af; 
+            color: white; 
+            padding: 12px; 
+            border-radius: 8px; 
+            width: 100%; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: background-color 0.3s; 
+        }
+        .login-btn:hover { 
+            background-color: #1d4ed8; 
+        }
+        .message { 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border-radius: 8px; 
+            text-align: center; 
+            font-weight: 600; 
+            display: none; 
+        }
+        .error { 
+            background-color: #fee2e2; 
+            color: #991b1b; 
+        }
+        .success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2 class="text-2xl font-bold text-center text-blue-800 mb-6"><i class="fas fa-user-shield mr-2"></i> Admin Login</h2>
+        
+        <div id="loginMessage" class="message error"></div>
+        
+        <form id="loginForm">
+            <input type="text" id="loginIdentifier" placeholder="Email or Username" required>
+            <input type="password" id="loginPassword" placeholder="Password" required>
+            <button type="submit" class="login-btn">Log In</button>
+        </form>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // ⚠️ আপনার Firebase কনফিগারেশন এখানে রিপ্লেস করুন
+        const firebaseConfig = {
+            apiKey: "AIzaSyCS5HN0yT3e7el75fBc2HLcLmTnrcQZ7bc",
+            authDomain: "exsurvey-1c78a.firebaseapp.com",
+            databaseURL: "https://exsurvey-1c78a-default-rtdb.firebaseio.com",
+            projectId: "exsurvey-1c78a",
+            storageBucket: "exsurvey-1c78a.firebasestorage.app",
+            messagingSenderId: "754959615386",
+            appId: "1:754959615386:web:65c390db232a7dafd3e623",
+            measurementId: "G-8SQNS2DLBT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+        const usersRef = database.ref('users');
+
+        const loginForm = document.getElementById('loginForm');
+        const loginMessage = document.getElementById('loginMessage');
+        const loginIdentifierInput = document.getElementById('loginIdentifier'); // এই ফিল্ডে Username/Email ইনপুট নেওয়া হবে
+
+        // মেসেজ দেখানোর ফাংশন
+        function showLoginMessage(msg, type = 'error') {
+            loginMessage.textContent = msg;
+            loginMessage.className = `message ${type}`;
+            loginMessage.style.display = 'block';
+            setTimeout(() => { loginMessage.style.display = 'none'; }, 5000);
+        }
+
+        // 🚪 রোল অনুযায়ী ডাইরেকশন ফাংশন
+        function redirectToDashboard(role) {
+            let targetPage = 'access-denied.html'; // ডিফল্ট
+
+            switch(role) {
+                case 'Support':
+                    targetPage = 'support-admin-panel.html';
+                    break;
+                case 'Account':
+                    targetPage = 'account-admin-panel.html';
+                    break;
+                case 'Transaction':
+                    targetPage = 'transaction-admin-panel.html';
+                    break;
+                case 'Task_Add':
+                    targetPage = 'task-add-admin-panel.html';
+                    break;
+            }
+            
+            window.location.href = targetPage;
+        }
+
+        // 🎯 Firebase Email/Password Authentication ফাংশন
+        async function authenticateUser(email, password) {
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // সফল লগইনের পরে DB থেকে রোল ডেটা পড়ুন
+                const snapshot = await usersRef.child(user.uid).once('value');
+                const userData = snapshot.val();
+                
+                const adminRoles = ['Support', 'Account', 'Transaction', 'Task_Add'];
+                const role = userData ? (userData.role || 'regular') : 'regular';
+                
+                if (adminRoles.includes(role)) {
+                    showLoginMessage(`Login successful! Role: ${role.toUpperCase()}. Redirecting...`, "success");
+                    redirectToDashboard(role);
+                } else {
+                    // রোল অ্যাডমিন না হলে
+                    showLoginMessage("Access Denied: Your user role is not authorized for this panel.", "error");
+                    auth.signOut(); 
+                }
+            } catch (error) {
+                let errorMessage = "Invalid email or password.";
+                if (error.code === 'auth/network-request-failed') {
+                    errorMessage = "Network error. Please check your connection.";
+                }
+                // এই এররটি কলার ফাংশনে (লগইন হ্যান্ডেলারে) পাস করা হচ্ছে
+                throw new Error(errorMessage);
+            }
+        }
+
+
+        // 🔑 মূল লগইন হ্যান্ডেলার (Username/Email লজিক)
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = loginIdentifierInput.value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            showLoginMessage("Processing login...", "success");
+
+            let emailToLogin = input; 
+
+            // 1. যদি ইনপুটে '@' থাকে, তবে সরাসরি ইমেইল দিয়ে লগইন করার চেষ্টা করবে
+            if (input.includes('@')) {
+                try {
+                    await authenticateUser(emailToLogin, password);
+                } catch (error) {
+                    showLoginMessage(`Login Failed: ${error.message}`, "error");
+                }
+                return;
+            }
+
+            // 2. যদি '@' না থাকে, তবে ইনপুটকে 'username' হিসেবে ধরে ডেটাবেসে খুঁজবে
+            showLoginMessage("Searching user by username...", "success");
+            try {
+                // Realtime DB query to find user by username
+                const snapshot = await usersRef.orderByChild('username').equalTo(input).once('value');
+                
+                if (snapshot.exists()) {
+                    // ইউজারনেম পাওয়া গেছে, এখন ইমেইল বের করুন
+                    const uid = Object.keys(snapshot.val())[0];
+                    const userData = snapshot.val()[uid];
+                    emailToLogin = userData.email;
+
+                    if (!emailToLogin) {
+                        showLoginMessage("Error: Email address not found for this username.", "error");
+                        return;
+                    }
+
+                    // ইমেইল পাওয়া গেলে, এখন সেই ইমেইল দিয়ে লগইন করার চেষ্টা করুন
+                    showLoginMessage(`Username found. Attempting login...`, "success");
+                    await authenticateUser(emailToLogin, password);
+
+                } else {
+                    // ইউজারনেম পাওয়া যায়নি 
+                    showLoginMessage("Login Failed: User not found with this username or email.", "error");
+                }
+            } catch (error) {
+                // authenticateUser থেকে আসা এরর বা ডেটাবেস এরর
+                console.error("Login process error:", error);
+                showLoginMessage(`Login Failed: ${error.message || "An unknown error occurred."}`, "error");
+            }
+        });
+    </script>
+</body>
+</html>
