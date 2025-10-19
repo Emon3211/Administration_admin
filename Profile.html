@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Profile Page</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        /* ========================
+           CSS Styles
+           ======================== */
+        body {
+            font-family: Arial, sans-serif;
+            /* ✅ ব্যাকগ্রাউন্ড কালার নীল */
+            background-color: #2196F3; 
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 800px;
+            /* প্রোফাইল কার্ডের ব্যাকগ্রাউন্ড সাদা */
+            background-color: #ffffff; 
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); 
+            padding: 30px;
+        }
+
+        /* Header Styles */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
+        }
+
+        .profile-header h1 {
+            margin: 0;
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #007bff;
+            flex-grow: 1;
+            text-align: center;
+            margin-left: -50px; 
+        }
+
+        /* Back Button */
+        .back-button {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+        }
+
+        .back-button:hover {
+            background-color: #5a6268;
+        }
+
+        /* Card Style for Details */
+        .profile-details-card {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        .profile-details-card h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            color: #333;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 10px;
+        }
+
+        /* Grid Layout for Details */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns */
+            gap: 15px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            border-bottom: 1px dotted #e0e0e0;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+        }
+
+        .value {
+            font-size: 1.1em;
+            word-wrap: break-word;
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .status-active {
+            background-color: #d4edda; /* Light Green */
+            color: #155724; /* Dark Green */
+        }
+
+        .status-not-active {
+            background-color: #f8d7da; /* Light Red */
+            color: #721c24; /* Dark Red */
+        }
+        
+        /* Error/Loading message */
+        #loading-message {
+            text-align: center;
+            font-size: 1.2em;
+            color: white; 
+            margin-top: 50px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .profile-container {
+                padding: 20px;
+            }
+            
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="profile-container" id="profile-content" style="display: none;">
+        
+        <header class="profile-header">
+            <button id="backButton" class="back-button" onclick="history.back()">
+                &larr; Back
+            </button>
+            <h1>Welcome <span id="welcome-name">Your Profile</span></h1>
+            </header>
+
+        <div class="profile-details-card">
+            <h2>Admin Profile Information</h2>
+            <div class="details-grid">
+                
+                <div class="detail-item">
+                    <span class="label">UID:</span>
+                    <span id="uid" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Username:</span>
+                    <span id="username" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Full Name:</span>
+                    <span id="full-name" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Gender:</span>
+                    <span id="gender" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Country:</span>
+                    <span id="country" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Address:</span>
+                    <span id="address" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Phone:</span>
+                    <span id="phone" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Email:</span>
+                    <span id="email" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Admin Role:</span>
+                    <span id="admin-role" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Admin Status:</span>
+                    <span id="admin-status" class="value">Loading...</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="label">Online Status:</span>
+                    <span id="online-status" class="value status-indicator">Loading...</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <div id="loading-message">Loading Profile...</div>
+
+    <script>
+        // ========================
+        // JavaScript/Firebase Logic
+        // ========================
+
+        // ✅ আপনার কনফিগারেশন
+        const firebaseConfig = {
+            apiKey: "AIzaSyCS5HN0yT3e7el75fBc2HLcLmTnrcQZ7bc",
+            authDomain: "exsurvey-1c78a.firebaseapp.com",
+            databaseURL: "https://exsurvey-1c78a-default-rtdb.firebaseio.com",
+            projectId: "exsurvey-1c78a",
+            storageBucket: "exsurvey-1c78a.firebasestorage.app",
+            messagingSenderId: "754959615386",
+            appId: "1:754959615386:web:65c390db232a7dafd3e623",
+            measurementId: "G-8SQNS2DLBT"
+        };
+
+        // Firebase ইনিশিয়ালাইজ করুন
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+        const loadingMessage = document.getElementById('loading-message');
+        const profileContent = document.getElementById('profile-content');
+
+        /**
+         * Firebase Realtime Database থেকে নির্দিষ্ট UID এর ডেটা লোড করে
+         */
+        function loadAdminProfile(uid, userEmail) {
+            const userRef = database.ref('users/' + uid);
+            const setText = (id, text) => document.getElementById(id).innerText = text || 'N/A';
+
+            // ডেটাবেস থেকে ডেটা লোড করুন
+            userRef.on('value', (snapshot) => {
+                const userData = snapshot.val();
+                
+                loadingMessage.style.display = 'none'; 
+                profileContent.style.display = 'block'; 
+
+                if (userData) {
+                    // প্রোফাইল তথ্য ডিসপ্লে করুন
+                    setText('uid', uid);
+                    setText('username', userData.username);
+                    
+                    // ⭐ ফিক্স: userData.fullName এর পরিবর্তে userData.fullname (ছোট অক্ষর) ব্যবহার করা হয়েছে
+                    const fullName = userData.fullname || 'N/A (Name Missing)'; 
+                    setText('full-name', fullName);
+                    
+                    // Header এ ফুল নেম ডিসপ্লে করুন
+                    document.getElementById('welcome-name').innerText = fullName !== 'N/A (Name Missing)' ? fullName : userData.username || 'Admin';
+
+                    // অন্যান্য তথ্য
+                    setText('gender', userData.gender);
+                    setText('country', userData.country);
+                    setText('address', userData.address);
+                    setText('phone', userData.phone);
+                    setText('email', userEmail);
+                    setText('admin-role', userData.role || 'User');
+
+                    // Admin Status ও Online Status
+                    const isAdmin = userData.is_admin === true;
+                    setText('admin-status', isAdmin ? 'Administrator' : 'General User');
+                    
+                    const onlineStatusElement = document.getElementById('online-status');
+                    const onlineStatus = isAdmin ? 'Active' : 'Not Active';
+                    
+                    onlineStatusElement.innerText = onlineStatus;
+                    onlineStatusElement.classList.remove('status-active', 'status-not-active');
+                    onlineStatusElement.classList.add(isAdmin ? 'status-active' : 'status-not-active');
+
+                } else {
+                    // ডেটাবেসে ডেটা না পাওয়া গেলে
+                    setText('welcome-name', 'Profile Not Found');
+                    setText('uid', 'Error: No data in database for this UID. Check your database path: users/' + uid);
+                }
+            }, (error) => {
+                // ডেটা লোড করার সময় এরর হলে
+                console.error("Firebase Read Error:", error);
+                loadingMessage.innerText = 'Error: Failed to load profile data.';
+            });
+        }
+
+        /**
+         * 🔥 ইউজার স্ট্যাটাস পরিবর্তন পর্যবেক্ষণ করুন
+         */
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // ইউজার লগইন করা আছে, প্রোফাইল লোড করুন
+                loadAdminProfile(user.uid, user.email);
+            } else {
+                // ইউজার লগইন করা নেই।
+                loadingMessage.innerHTML = 'You are not logged in. This page requires authentication.';
+                profileContent.style.display = 'none'; 
+            }
+        });
+
+    </script>
+</body>
+</html>
